@@ -178,6 +178,22 @@ export default {
       return ans;
     },
 
+    // Get csrf token
+     getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    },
+
     // store product into database
     saveProduct() {
       let product = {
@@ -189,10 +205,30 @@ export default {
         product_variant_prices: this.product_variant_prices
       }
 
-
-      axios.post('/product', product).then(response => {
-        console.log(response.data);
-      }).catch(error => {
+      const csrftoken = this.getCookie('csrftoken');
+      
+      let url = '/product/create-new-product/';
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify(product)
+      })
+      .then(response => {
+        return response.json();
+      })
+      .then(data => {
+        const domain = location.protocol + location.host;
+        if(data.success) {
+          window.location.reload();
+        }
+        else {
+          alert(JSON.stringify(data));
+        }
+      })
+      .catch(error => {
         console.log(error);
       })
 
