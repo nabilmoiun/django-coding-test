@@ -4,11 +4,15 @@ from django.views.generic import TemplateView
 from product.views.product import (
     CreateProductView,
     ListProductView,
+    EditProductView
 )
 from product.views.variant import (
     VariantView, VariantCreateView, VariantEditView
 )
-from product.apis.views import CreateProductApi
+from product.apis.views import (
+    CreateProductApi, RetrieveProductApi,
+    EditProductApi, DeleteProductVariantPrice
+)
 
 app_name = "product"
 
@@ -20,10 +24,14 @@ urlpatterns = [
 
     # Products URLs
     path('create/', CreateProductView.as_view(), name='create.product'),
+    path('edit/<int:pk>/', EditProductView.as_view(), name='edit.product'),
     path('list/', ListProductView.as_view(extra_context={
         'product': True
     }), name='list.product'),
     
-    # Create product rest api
+    # Product rest api
     path('create-new-product/', CreateProductApi.as_view(), name='create-new-product'),
+    path('retrieve-product/<int:pk>/', RetrieveProductApi.as_view(), name='retrieve-product'),
+    path('edit-product/<int:pk>/', EditProductApi.as_view(), name='edit-product'),
+    path('delete-product-variant-price/<int:pk>/', DeleteProductVariantPrice.as_view(), name='delete-product-variant-price'),
 ]

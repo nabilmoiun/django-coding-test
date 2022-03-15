@@ -10,7 +10,10 @@ from django.core.paginator import (
 )
 
 from product.models import (
-    Product, ProductVariant, ProductVariantPrice, Variant
+    Product,
+    ProductVariant,
+    ProductVariantPrice,
+    Variant
 )
 
 
@@ -22,6 +25,40 @@ class CreateProductView(generic.TemplateView):
         variants = Variant.objects.filter(active=True).values('id', 'title')
         context['product'] = True
         context['variants'] = list(variants.all())
+        print(context['variants'])
+        return context
+
+
+class EditProductView(generic.DetailView):
+    model = Product
+    template_name = 'products/edit.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(EditProductView, self).get_context_data(**kwargs)
+        product_variants = ProductVariant.objects.filter(product__id=self.get_object().id)
+        variants = product_variants.values("variant").annotate(Count("variant")).values_list("variant", flat=True)
+        
+        if variants.count() == 0:
+            variants = Variant.objects.filter(active=True).values('id', 'title')
+            context['variants'] = list(variants.all())
+        else:
+            variants = Variant.objects.filter(active=True, id__in=variants).values('id', 'title')
+            variant_qs = []
+            for v in variants:
+                tags = []
+                qs = ProductVariant.objects.filter(
+                    product__id=self.get_object().id,
+                    variant__id=v['id']
+                )
+                for variant in qs:
+                     tags.append(variant.variant_title)
+                
+                variant_qs.append({"id": v['id'], "title": v['title'], "tags": tags})
+
+            context['variants'] = variant_qs
+        
+        context['product'] = True
+        context['has_variant'] = len(context['variants']) > 0
         return context
 
 

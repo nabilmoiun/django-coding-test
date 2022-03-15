@@ -1,19 +1,27 @@
 import itertools
 
+from django.shortcuts import get_object_or_404
+
 from django.contrib import messages
 
 from rest_framework import status
+from rest_framework import generics
 from rest_framework import permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from product.models import (
+    Product,
     ProductVariant,
     ProductImage,
     ProductVariantPrice,
     Variant
 )
-from .serializers import ProductSerializer
+from .serializers import (
+    ProductSerializer,
+    ProductDetailsSerializer,
+    ProductVariantPriceSerializer
+)
 
 
 class CreateProductApi(APIView):
@@ -88,3 +96,54 @@ class CreateProductApi(APIView):
             {"success": True, "success_url": "/product/list/"},
             status=status.HTTP_201_CREATED
         )
+
+
+class RetrieveProductApi(APIView):
+    permission_classes = [permissions.IsAuthenticated, ]
+
+    def get(self, *args, **kwargs):
+        queryset = get_object_or_404(Product, pk=kwargs.get('pk'))
+        serializer = ProductDetailsSerializer(queryset)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+
+class EditProductApi(APIView):
+
+    permission_classes = [permissions.IsAuthenticated, ]
+
+    def post(self, *args, **kwargs):
+        product = get_object_or_404(Product, pk=kwargs.get('pk'))
+        data = self.request.data
+        product_variant_prices = data['product_variant_prices']
+        
+        serializer = ProductSerializer(product, data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        product = serializer.save()
+
+        for variant in product_variant_prices:
+            product_variant = ProductVariantPrice.objects.get(pk=variant['id'])
+            product_variant.price = variant['price']
+            product_variant.stock = variant['stock']
+            product_variant.save()
+
+        messages.success(self.request, "Product has been updated successfully !")
+        return Response(
+            {"success": True, "success_url": "/product/list/"},
+            status=status.HTTP_200_OK
+        )
+
+
+class DeleteProductVariantPrice(generics.DestroyAPIView):
+
+    permission_classes = [permissions.IsAuthenticated, ]
+
+    queryset = ProductVariantPrice.objects.all()
+    serializer_class = ProductVariantPriceSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"message": "Deleted"}, status=status.HTTP_200_OK)
